@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 
 #define DEFPGQUERYPATH "/etc/libzbxpgsql.d"
 
