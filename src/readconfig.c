@@ -38,7 +38,8 @@ const char * getPGQUERYPATH () {
         return pgquerypath;
     } else {
         if (strlen(envPGQUERYPATH) > MAXGLOBPATH) {
-            printf("Environment variable \"PGQUERYPATH\" length %i exceeds max length of %i\n", strlen(pgquerypath), MAXGLOBPATH);
+            printf("ERROR: Env variable \"PGQUERYPATH\" value too long.\n");
+            printf("ERROR: Length %i exceeds max length of %i\n", strlen(pgquerypath), MAXGLOBPATH);
             return NULL;
         }
         return envPGQUERYPATH;
@@ -54,7 +55,7 @@ const char * getPGQUERYPATH () {
  *
  */
 int globerror(const char *filename, int errorcode) {
-    printf("%s: %s\n", filename, strerror(errorcode));
+    printf("ERROR: globbing error: %s: %s\n", filename, strerror(errorcode));
     return EXIT_FAILURE;
 }
 
@@ -78,7 +79,7 @@ int globfilelist(const char *pattern) {
         case 0 :
             for (fileCount = 0; fileCount < filenames.gl_pathc; fileCount++) {
                 if (fileCount >= MAXCONFFILES) {
-                    printf("Conf File limit hit\n");
+                    printf("ERROR: Conf file count limit hit\n");
                     break;
                 }
                 strsize = strlen(filenames.gl_pathv[fileCount]) + 1;
@@ -88,7 +89,7 @@ int globfilelist(const char *pattern) {
             globfree(&filenames);
             break;
         case GLOB_NOMATCH :
-            printf("No matches found\n");
+            printf("INFO: No conf file matches found\n");
             fileCount = 0;
             break;
         default :
@@ -141,13 +142,13 @@ int  storeSQLstmt(const char *key, const char *stmt) {
     // allocate memory for the new key
     SQLkey[i+1] = malloc(sizeof(char) * (strlen(key)+1));
     if (SQLkey[SQLcount] == NULL) {
-        printf("Error from malloc");
+        printf("ERROR: malloc did not allocate memory");
         return EXIT_FAILURE;
     }
     // allocate memory for the new value
     SQLstmt[i+1] = malloc(sizeof(char) * (strlen(stmt)+1));
     if (SQLstmt[SQLcount] == NULL) {
-        printf("Error from malloc");
+        printf("ERROR: malloc did not allocate memory");
         return EXIT_FAILURE;
     }
     // store the key and value
@@ -255,7 +256,6 @@ int readconfig(const char *cfgfile) {
         // we only want strings
         if(CONFIG_TYPE_STRING == config_setting_type(element)) {
             value = config_setting_get_string_elem(root, i);
-            printf("Adding %-15s = \"%s\"\n", key, value);
             // store it in our key/value store
             if (storeSQLstmt(key, value) == EXIT_FAILURE) {
                 config_destroy(&cfg);
@@ -263,8 +263,8 @@ int readconfig(const char *cfgfile) {
             }
         }
         else
-            printf("WARNING: Config element \"%s\" on line %i in \"%s\" is not a string - discarding it\n",
-                   key, config_setting_source_line(element), config_setting_source_file(element));
+            printf("WARNING: Element \"%s\" in \"%s\" on line %i is not a string - discarding\n",
+                   key, config_setting_source_file(element), config_setting_source_line(element));
     }
 
     config_destroy(&cfg);
@@ -292,7 +292,7 @@ int main(int argc, char **argv) {
     }
     numfiles = globfilelist(confdir);
     if (numfiles < 0) {
-        printf("Error from globfilelist\n");
+        printf("ERROR: Error returned from globfilelist\n");
         return EXIT_FAILURE;
     }
     if (numfiles == 0) {
@@ -301,7 +301,7 @@ int main(int argc, char **argv) {
     }
 
     for (i = 0; i < numfiles; i++) {
-        printf("Parsing config file \"%s\"\n", configPath[i]);
+        printf("INFO: Parsing config file \"%s\"\n", configPath[i]);
         readconfig(configPath[i]);
         free(configPath[i]);
     }
