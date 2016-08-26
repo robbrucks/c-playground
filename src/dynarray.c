@@ -5,15 +5,15 @@
 #define MAXSQLSTMTS 250
 
 // Key/Value storage variables
-char  *SQLkeyStore[MAXSQLSTMTS];
-char  *SQLstmtStore[MAXSQLSTMTS];
+char  *SQLkey[MAXSQLSTMTS];
+char  *SQLstmt[MAXSQLSTMTS];
 int   SQLcountStored = 0;
 
 /*
  * Function storeSQLstmt
  *
  * Stores a string key and a string value (SQL statement)
- * 
+ * into a sorted array, maintaining the sort.
  *
  * Returns: 
  *   0 = successfully inserted
@@ -21,69 +21,53 @@ int   SQLcountStored = 0;
  */
 
 int  storeSQLstmt(char *key, char *stmt) {
+    int  i;
 
     if (SQLcountStored >= MAXSQLSTMTS) {
         printf("Keystore full: %i statements stored already\n", SQLcountStored);
-        return 1;
+        return EXIT_FAILURE;
     }
-    SQLkeyStore[SQLcountStored] = malloc(sizeof(char) * (strlen(key)+1));
-    if (SQLkeyStore[SQLcountStored] == NULL) {
+
+    i = SQLcountStored - 1;
+    while (i >= 0 && strcmp(key,SQLkey[i]) < 0) {
+        SQLkey[i+1]  = SQLkey[i];
+        SQLstmt[i+1] = SQLstmt[i];
+        i--;
+    }
+
+    SQLkey[i+1] = malloc(sizeof(char) * (strlen(key)+1));
+    if (SQLkey[SQLcountStored] == NULL) {
         printf("Error from malloc");
-        return 1;
+        return EXIT_FAILURE;
     }
-    SQLstmtStore[SQLcountStored] = malloc(sizeof(char) * (strlen(stmt)+1));
-    if (SQLstmtStore[SQLcountStored] == NULL) {
+
+    SQLstmt[i+1] = malloc(sizeof(char) * (strlen(stmt)+1));
+    if (SQLstmt[SQLcountStored] == NULL) {
         printf("Error from malloc");
-        return 1;
+        return EXIT_FAILURE;
     }
-    strcpy(SQLkeyStore[SQLcountStored],key);
-    strcpy(SQLstmtStore[SQLcountStored],stmt);
+
+    strcpy(SQLkey[i+1],key);
+    strcpy(SQLstmt[i+1],stmt);
     SQLcountStored++;
-    return 0;
+
+    return EXIT_SUCCESS;
 }
 
-/*
- * Function sortSQLkeys
- *
- * Sorts key and stmt arrays
- *
- * Returns: 
- */
-
-int  sortSQLkeys() {
-    int   i;
-    int   j;
-    char  *tempkey;
-
-    // simple bubble sort
-    for ( i = 1; i < SQLcountStored; i++ ) {
-        printf("%i\n", i);
-        for ( j = 1; j < SQLcountStored; j++ ) {
-            if (strcmp(SQLkeyStore[j-1],SQLkeyStore[j]) > 0) {
-                // swap keys
-                tempkey = SQLkeyStore[j-1];
-                SQLkeyStore[j-1] = SQLkeyStore[j];
-                SQLkeyStore[j] = tempkey;
-                // swap stmts
-                tempkey = SQLstmtStore[j-1];
-                SQLstmtStore[j-1] = SQLstmtStore[j];
-                SQLstmtStore[j] = tempkey;
-            }
-        }
-    }
-}
 
 /*
  * Function SQLkeysearch
  *
  * Searches the key array to find the
- * corresponding stmt.
+ * corresponding SQL stmt using binary
+ * search.
  *
  * Returns: 
- *    ??? i should return the stmt, not the index
+ *    If Key Found: index to key
+ *    If Not Found: -1
  */
 
-int  SQLkeysearch(char *key) {
+int SQLkeysearch(char *key) {
     int  top;
     int  mid;
     int  bottom;
@@ -95,12 +79,11 @@ int  SQLkeysearch(char *key) {
     while (bottom <= top) {
         ctr++;
         mid = (bottom + top)/2;
-        if (strcmp(SQLkeyStore[mid], key) == 0) {
-            printf("found key %s after %i iterations\n", key, ctr);
+        if (strcmp(SQLkey[mid], key) == 0) {
             return mid;
-        } else if (strcmp(SQLkeyStore[mid], key) > 0) {
+        } else if (strcmp(SQLkey[mid], key) > 0) {
             top    = mid - 1;
-        } else if (strcmp(SQLkeyStore[mid], key) < 0) {
+        } else if (strcmp(SQLkey[mid], key) < 0) {
             bottom = mid + 1;
         }
     }
@@ -110,7 +93,7 @@ int  SQLkeysearch(char *key) {
 /*
  * Function SQLcleanup
  *
- * Free up memory allocated to the arrays
+ * Free up array memory when done.
  *
  * Returns: 
  */
@@ -118,12 +101,12 @@ int  SQLkeysearch(char *key) {
 int  SQLCleanup() {
     int   i;
 
-    printf("cleanup\n");
     for (i = 0; i < SQLcountStored; i++) {
-        free(SQLkeyStore[i]);
-        free(SQLstmtStore[i]);
+        free(SQLkey[i]);
+        free(SQLstmt[i]);
     }
     SQLcountStored = 0;
+    return EXIT_SUCCESS;
 }
 
 
@@ -333,7 +316,7 @@ int main () {
     storeSQLstmt("key248","really long sql statement number 248");
     storeSQLstmt("key249","really long sql statement number 249");
     storeSQLstmt("key250","really long sql statement number 250");
-    storeSQLstmt("key251","really long sql statement number 251");
+    storeSQLstmt("key042","really long sql statement number 042");
     storeSQLstmt("key176","really long sql statement number 176");
     storeSQLstmt("key177","really long sql statement number 177");
     storeSQLstmt("key178","really long sql statement number 178");
@@ -383,28 +366,22 @@ int main () {
     storeSQLstmt("key236","really long sql statement number 236");
     storeSQLstmt("key237","really long sql statement number 237");
     storeSQLstmt("key238","really long sql statement number 238");
-    storeSQLstmt("key042","really long sql statement number 042");
+    storeSQLstmt("keyfail","too many - fail");
 
-    printf("\nUnsorted values:\n");
-    for (i=0; i < 250; i++) {
-        printf("key=%s\n", SQLkeyStore[i]);
-        printf("value=%s\n", SQLstmtStore[i]);
-    }
+    printf("Stored %i statements\n\n", SQLcountStored);
 
-    sortSQLkeys();
-
-    printf("\nSorted values:\n");
-    for (i=0; i < 250; i++) {
-        printf("key=%s\n", SQLkeyStore[i]);
-        printf("value=%s\n", SQLstmtStore[i]);
+    for (i=0; i < MAXSQLSTMTS; i++) {
+        printf("key=%s  ", SQLkey[i]);
+        printf("value=%s\n", SQLstmt[i]);
     }
 
     printf("\n");
-    x=SQLkeysearch("key115");  printf("key115 value =\"%s\"\n", SQLstmtStore[x]);
-    x=SQLkeysearch("cry115");  printf("cry115 value =\"%s\"\n", SQLstmtStore[x]);
-    x=SQLkeysearch("key041");  printf("key041 value =\"%s\"\n", SQLstmtStore[x]);
-    x=SQLkeysearch("key210");  printf("key210 value =\"%s\"\n", SQLstmtStore[x]);
-    x=SQLkeysearch("key183");  printf("key183 value =\"%s\"\n", SQLstmtStore[x]);
+    printf("key115 value =\"%s\"\n", SQLstmt[SQLkeysearch("key115")]);
+    printf("cry115 value =\"%s\"\n", SQLstmt[SQLkeysearch("cry115")]);
+    printf("key041 value =\"%s\"\n", SQLstmt[SQLkeysearch("key041")]);
+    printf("key210 value =\"%s\"\n", SQLstmt[SQLkeysearch("key210")]);
+    printf("keyfail value =\"%s\"\n", SQLstmt[SQLkeysearch("keyfail")]);
+    printf("key183 value =\"%s\"\n", SQLstmt[SQLkeysearch("key183")]);
 
     SQLCleanup();
 
