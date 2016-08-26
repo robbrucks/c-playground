@@ -5,14 +5,32 @@
 
 #define MAXCONFFILES 100
 
-// globals
+// global variables
 char   *configPath[MAXCONFFILES];
 int    fileCount = 0;
 
+/*
+ * Function globerror
+ *
+ * Error handler for globbing.
+ *
+ */
+
 int globerror(const char *filename, int errorcode) {
     printf("%s: %s\n", filename, strerror(errorcode));
-    return 1;
+    return EXIT_FAILURE;
 }
+
+/*
+ * Function globfilelist
+ *
+ * Takes a glob pattern and stores matching files
+ * in configPath array.
+ *
+ * Returns:
+ *    int number of files matched
+ *    -1 if error encountered
+ */
 
 int globfilelist(const char *pattern) {
     glob_t   filenames;
@@ -41,11 +59,12 @@ int globfilelist(const char *pattern) {
     return fileCount;
 }
 
+// test 
 int main(int argc, char **argv) {
     int     i;
 
     if (argc == 1) {
-        printf("usage: %s '<wildcard_path>'\n", argv[0]);
+        printf("usage: %s '<wildcard_path>'  (Be sure to include quotes!!!)\n", argv[0]);
         return 1;
     }
     if (globfilelist(argv[1]) > 0) {
